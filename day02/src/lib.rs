@@ -1,3 +1,4 @@
+use std::cmp::max;
 use std::collections::BTreeMap;
 use regex::Regex;
 
@@ -13,6 +14,28 @@ pub fn part1(input: &str) -> usize {
         .map(Game::from_str)
         .filter(|game| game.is_valid(&cubes_in_bag))
         .map(|game| game.id)
+        .sum();
+}
+
+pub fn part2(input: &str) -> usize {
+
+    return input
+        .lines()
+        .map(Game::from_str)
+        .map(|game| {
+            let cubes_in_bag: BTreeMap<Color, usize> = BTreeMap::from([]);
+
+            let result = game.rounds.iter()
+                .fold(cubes_in_bag, |mut acc, round| {
+                    round.iter().for_each(|observation| {
+                        acc.entry(observation.color)
+                            .and_modify(|amount| { *amount = max(*amount, observation.amount) })
+                            .or_insert(observation.amount);
+                    });
+                    return acc;
+                });
+            return result.values().product::<usize>();
+        })
         .sum();
 }
 
@@ -68,7 +91,7 @@ impl CubeObservation {
     }
 }
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Copy, Clone)]
 enum Color {
     Red,
     Green,
@@ -94,5 +117,11 @@ mod test_day02 {
     fn test_part_1() {
         let example_input = include_str!("../resources/example.txt");
         assert_eq!(part1(example_input), 8);
+    }
+
+    #[test]
+    fn test_part_2() {
+        let example_input = include_str!("../resources/example.txt");
+        assert_eq!(part2(example_input), 2286);
     }
 }
