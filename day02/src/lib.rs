@@ -70,7 +70,7 @@ impl Game {
 
         return Game {
             id: game_id,
-            rounds: rounds,
+            rounds,
         };
     }
 }
