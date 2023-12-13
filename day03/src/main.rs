@@ -1,3 +1,6 @@
+use day03::part1;
+
 fn main() {
-    println!("Hello, AoC 2023!");
+    let input = include_str!("../resources/input.txt");
+    println!("Part 1: {}", part1(input));
 }
