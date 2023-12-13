@@ -1,5 +1,4 @@
 use std::collections::{BTreeMap, HashSet};
-use std::io::Read;
 
 pub fn part1(input: &str) -> u32 {
     let sparse_matrix = input
@@ -24,6 +23,42 @@ pub fn part1(input: &str) -> u32 {
         number.neighbouring_points().iter().any(|neighbour| symbol_set.contains(neighbour))
     }).map(|number| number.value).sum();
 }
+
+pub fn part2(input: &str) -> u32 {
+    let sparse_matrix = input
+        .lines()
+        .enumerate()
+        .flat_map(|(y, line)| {
+            line
+                .chars()
+                .enumerate()
+                .filter(|(_, character)| *character != '.' )
+                .map(move |(x, character)| (Point(y as i32, x as i32), Cell::from_char(character)))
+        })
+        .collect::<BTreeMap<Point, Cell>>();
+
+    let numbers: BTreeMap<Point, u32> = construct_numbers(&sparse_matrix).iter()
+        .flat_map(|number| {
+            number.locations.iter().map(|p| (p.clone(), number.value)).collect::<Vec<(Point, u32)>>()
+        })
+        .collect();
+    let gears: Vec<Point> = sparse_matrix.iter()
+        .filter_map(|(point, cell)| match cell {
+            Cell::Symbol('*') => Some(point.clone()),
+            _ => None,
+        })
+        .collect();
+
+    return gears.iter()
+        .filter_map(|gear| {
+            let neighbours: HashSet<u32> = gear.neighbouring_points().iter().filter_map(|neighbour| numbers.get(neighbour)).map(|x| *x).collect();
+            if neighbours.len() != 2 {
+                return None
+            }
+            return Some(neighbours.iter().product::<u32>())
+        }).sum();
+}
+
 
 // The not so pretty number constructing code.
 // Preferably would require less in for loop state mutability.
@@ -73,6 +108,21 @@ impl Number {
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Copy, Clone, Hash)]
 struct Point(i32, i32);
 
+impl Point {
+    pub fn neighbouring_points(self: &Point) -> Vec<Point> {
+        return vec![
+            Point(self.0 - 1, self.1 - 1),
+            Point(self.0 - 1, self.1),
+            Point(self.0 - 1, self.1 + 1),
+            Point(self.0, self.1 - 1),
+            Point(self.0, self.1 + 1),
+            Point(self.0 + 1, self.1 - 1),
+            Point(self.0 + 1, self.1),
+            Point(self.0 + 1, self.1 + 1),
+        ]
+    }
+}
+
 #[derive(Debug)]
 enum Cell {
     None,
@@ -88,13 +138,6 @@ impl Cell {
             c => Cell::Symbol(c),
         }
     }
-
-    pub fn is_number(self: &Cell) -> bool {
-        match self {
-            Cell::Digit(_) => true,
-            _ => false,
-        }
-    }
 }
 
 #[cfg(test)]
@@ -105,6 +148,12 @@ mod test_day03 {
     pub fn test_part1() {
         let example_input = include_str!("../resources/example.txt");
         assert_eq!(part1(example_input), 4361);
+    }
+
+    #[test]
+    pub fn test_part2() {
+        let example_input = include_str!("../resources/example.txt");
+        assert_eq!(part2(example_input), 467835);
     }
 
     #[test]
