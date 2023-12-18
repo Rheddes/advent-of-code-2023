@@ -55,12 +55,12 @@ mod test_day04 {
 
     #[test]
     fn test_part1() {
-        assert_eq!(part1(include_str!("../resources/example.txt")), 13);
+        assert_eq!(part1(include_str!("../resources/example1.txt")), 13);
     }
 
     #[test]
     fn test_part2() {
-        assert_eq!(part2(include_str!("../resources/example.txt")), 30);
+        assert_eq!(part2(include_str!("../resources/example1.txt")), 30);
     }
 
     #[test]
