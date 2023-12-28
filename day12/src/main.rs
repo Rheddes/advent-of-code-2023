@@ -1,3 +1,6 @@
+use day12::part1;
+
 fn main() {
-    println!("Hello, world!");
+    let input = include_str!("../resources/input.txt");
+    println!("Part 1: {}", part1(input));
 }
