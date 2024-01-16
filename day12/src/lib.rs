@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+
 type Cache = HashMap<(Vec<char>, Vec<usize>), usize>;
 
 pub fn part1(input: &str) -> usize {
