@@ -1,52 +1,54 @@
-use itertools::Itertools;
+use std::collections::HashMap;
+type Cache = HashMap<(Vec<char>, Vec<usize>), usize>;
 
 pub fn part1(input: &str) -> usize {
     return input.lines().map(parse_line)
-        .map(|(pattern, springs)| process_row(pattern, springs))
+        .map(|(pattern, springs)| process_row_string_pattern(pattern, springs))
         .sum();
 }
 
 pub fn part2(input: &str) -> usize {
     return input.lines().map(parse_line)
-        .map(|(pattern, springs)| {
-            let extend_pattern = [pattern, pattern, pattern, pattern, pattern].join("?");
-            let extend_springs: Vec<usize> = springs.iter().cycle().take(springs.len() * 5).cloned().collect();
-            return (extend_pattern, extend_springs);
-        })
-        .map(|(pattern, springs)| process_row(pattern.as_str(), springs))
+        .map(|(pattern, springs)| ([pattern].repeat(5).join("?"), springs.repeat(5)))
+        .map(|(pattern, springs)| process_row_string_pattern(pattern.as_str(), springs))
         .sum();
 }
 
-fn is_valid(pattern: &Vec<char>, springs: &Vec<usize>) -> bool {
-    return pattern.iter().filter(|p| p == &&'#').count() == springs.iter().sum()
-        && is_valid_until(pattern, springs, pattern.len(), true)
+fn process_row_string_pattern(pattern: &str, springs: Vec<usize>) -> usize {
+    return process_row(pattern.chars().collect::<Vec<_>>().as_slice(), springs.as_slice(), &mut HashMap::new());
 }
 
-fn is_valid_until(pattern: &Vec<char>, springs: &Vec<usize>, until: usize, strict: bool) -> bool {
-    return pattern.iter()
-        .take(until)
-        .group_by(|c| **c == '#')
-        .into_iter()
-        .filter_map(|(sat, group)| if sat { Some(group.count()) } else { None })
-        .zip(springs.iter())
-        .all(|(p, s)| if strict { p == *s } else { p <= *s }); // Last group could also be less :\
-}
-
-fn f(pattern: Vec<char>, springs: &Vec<usize>, skip_first: usize) -> usize {
-    let next_idx = pattern.iter().enumerate().skip(skip_first).find(|(_, p)| p == &&'?');
-    if next_idx.is_none() {
-        return if is_valid(&pattern, springs) { 1 }  else { 0 };
+fn process_row(pattern: &[char], springs: &[usize], cache: &mut Cache) -> usize {
+    let cache_key = (pattern.to_vec(), springs.to_vec());
+    if let Some(&result) = cache.get(&cache_key) { return result; }
+    if springs.is_empty() {
+        return !pattern.contains(&'#') as usize;
     }
-    let (idx, _) = next_idx.unwrap();
-    if !is_valid_until(&pattern, springs, idx, false) { return 0; }
-    let head = &pattern[0..idx];
-    let tail = &pattern[idx+1..];
-    return f([head, &['#'], tail].concat(), springs, idx) + f([head, &['.'], tail].concat(), springs, idx)
+    if pattern.is_empty() {
+        return 0;
+    }
+    let result = match pattern[0] {
+        '.' => process_row(&pattern[1..], springs, cache),
+        '#' => process_spring(pattern, springs, cache),
+        '?' => process_spring(pattern, springs, cache) + process_row(&pattern[1..], springs, cache),
+        _ => panic!("Illegal character"),
+    };
+    cache.insert(cache_key, result);
+    return result;
 }
 
-fn process_row(pattern: &str, springs: Vec<usize>) -> usize {
-    let pattern: Vec<char> = pattern.chars().collect();
-    return f(pattern, &springs, 0);
+fn process_spring(pattern: &[char], springs: &[usize], cache: &mut Cache) -> usize {
+    let spring_length = springs[0];
+    if pattern.len() < spring_length || pattern[0..spring_length].contains(&'.') {
+        return 0;
+    }
+    if pattern.len() == spring_length {
+        return (springs.len() == 1) as usize;
+    }
+    if pattern[spring_length] == '#' {
+        return 0;
+    }
+    return process_row(&pattern[spring_length+1..], &springs[1..], cache);
 }
 
 fn parse_line(line: &str) -> (&str, Vec<usize>) {
@@ -70,37 +72,19 @@ mod test_day12 {
     }
 
     #[test]
+    fn test_part1_oneline() {
+        assert_eq!(part1("???.### 1,1,3"), 1);
+        assert_eq!(part1(".??..??...?##. 1,1,3"), 4);
+        assert_eq!(part1("?#?#?#?#?#?#?#? 1,3,1,6"), 1);
+        assert_eq!(part1("????.#...#... 4,1,1"), 1);
+        assert_eq!(part1("????.######..#####. 1,6,5"), 4);
+        assert_eq!(part1("?###???????? 3,2,1"), 10);
+    }
+
+    #[test]
     fn test_part2_oneline() {
         assert_eq!(part2("???.### 1,1,3"), 1);
         assert_eq!(part2(".??..??...?##. 1,1,3"), 16384);
-        // assert_eq!(part2("?###???????? 3,2,1"), 506250);
-    }
-
-    #[test]
-    fn test_is_valid() {
-        assert_eq!(is_valid(&vec!['#', '.', '#', '.', '#', '#', '#'], &vec![1,1,3]), true);
-    }
-
-    fn build_vec(input: &str) -> Vec<char> { input.chars().collect() }
-
-    #[test]
-    fn test_f() {
-        assert_eq!(f("???.###".chars().collect(), &vec![1,1,3], 0), 1);
-        assert_eq!(f("????.###".chars().collect(), &vec![1,1,3], 0), 3);
-        assert_eq!(f("?###????????".chars().collect(), &vec![3,2,1], 0), 10);
-    }
-
-    #[test]
-    fn test_is_valid_until() {
-        assert_eq!(is_valid(&build_vec(".###.##.#..#"), &vec![3,2,1]), false);
-        assert_eq!(is_valid(&build_vec(".###.##.#..."), &vec![3,2,1]), true);
-
-    }
-
-    #[test]
-    fn test_valid_until() {
-        assert_eq!(is_valid_until(&build_vec("####????????"), &vec![3,2,1], 4, false), false);
-        assert_eq!(is_valid_until(&build_vec(".###????????"), &vec![3,2,1], 4, false), true);
-        assert_eq!(is_valid_until(&build_vec(".###.#??????"), &vec![3,2,1], 6, false), true);
+        assert_eq!(part2("?###???????? 3,2,1"), 506250);
     }
 }
